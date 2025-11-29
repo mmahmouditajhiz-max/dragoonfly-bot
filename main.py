@@ -96,14 +96,32 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
 def main():
     app = Application.builder().token(TOKEN).build()
+    
     app.add_handler(CommandHandler("start", start))
     app.add_handler(CallbackQueryHandler(button_handler))
     app.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, handle_message))
-    print("Dragonfly + مینا ۱۰۰٪ بدون ارور و زنده شد!")
-    app.run_polling()
+
+    print("Dragonfly زنده شد و ۲۴/۷ آنلاینه!")
+
+    # این خط مهم‌ترین تغییره — keep-alive برای Railway
+    app.run_polling(
+        drop_pending_updates=True,
+        allowed_updates=Update.ALL_TYPES,
+        poll_interval=2.0,
+        timeout=30
+    )
+
+    # این لوپ بی‌نهایت باعث می‌شه Railway دیگه کانتینر رو نکشه
+    try:
+        while True:
+            asyncio.run(asyncio.sleep(3600))  # هر ساعت یه بار یه چیزی می‌نویسه تو log
+            print("Keep-alive: Dragonfly هنوز زنده‌ست!")
+    except KeyboardInterrupt:
+        pass
 
 if __name__ == "__main__":
     main()
+
 
 
 
