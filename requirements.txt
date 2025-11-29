@@ -2,4 +2,5 @@ ccxt
 pandas
 pandas-ta
 python-telegram-bot>=21.0
-openai>=1.0.0
+openai>=1.30.0
+
