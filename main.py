@@ -11,7 +11,7 @@ client = OpenAI(
     base_url="https://api.groq.com/openai/v1"
 )
 
-MINA_PHOTO = "https://i.ibb.co/5nM3Y8p/mina-dragonfly.jpg"
+MINA_PHOTO = "https://files.catbox.moe/g22izd.jpg"
 
 def main_menu():
     kb = [
@@ -112,6 +112,7 @@ def main():
 
 if __name__ == "__main__":
     main()
+
 
 
 
