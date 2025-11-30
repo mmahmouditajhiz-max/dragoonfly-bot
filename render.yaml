@@ -2,7 +2,7 @@ services:
   - type: web
     name: dragonfly-bot
     env: python
-    pythonVersion: "3.11"          # ← این خط خیلی مهمه!
+    pythonVersion: "3.11.0"          # ← این خط خیلی مهمه!
     region: frankfurt
     plan: free
     buildCommand: |
@@ -10,4 +10,5 @@ services:
       pip install -r requirements.txt
     startCommand: python main.py
     autoDeploy: true
+
 
