@@ -54,7 +54,7 @@ async def button(update: Update, context: ContextTypes.DEFAULT_TYPE):
         back_btn = InlineKeyboardMarkup([[InlineKeyboardButton("بازگشت", callback_data="start")]])
         texts = {
             "stock": "تحلیل بورس به زودی…",
-            "signal": "برای دریافت سیگنال VIP باید عضو کانال باشی\n@dragonfly_vip_channel",
+            "signal": "برای دریافت سیگنال VIP باید عضو کانال باشی\nhttps://t.me/+tAS8b3RGZBcwMWJk",
             "subscribe": "عضویت در کانال VIP\nهزینه: ۹۹ تتر\n@dragonfly_support",
             "support": "پشتیبانی: @dragonfly_support"
         }
@@ -118,6 +118,7 @@ def main():
 
 if __name__ == "__main__":
     main()
+
 
 
 
