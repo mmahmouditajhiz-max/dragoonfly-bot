@@ -1,6 +1,11 @@
 import os
+import logging
 from telegram import Update, InlineKeyboardButton, InlineKeyboardMarkup
-from telegram.ext import Application, CommandHandler, CallbackQueryHandler, ContextTypes
+from telegram.ext import Application, CommandHandler, CallbackQueryHandler, MessageHandler, ContextTypes, filters
+
+# برای دیدن ارورها تو Logs
+logging.basicConfig(level=logging.INFO)
+logger = logging.getLogger(__name__)
 
 TOKEN = os.getenv("TELEGRAM_TOKEN")
 
@@ -20,9 +25,9 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
     )
 
 async def button(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    q = update.callback_query
-    await q.answer()
-    
+    query = update.callback_query
+    await query.answer()
+
     texts = {
         "crypto": "نماد کریپتو رو بنویس (مثل BTCUSDT):",
         "stock": "نماد بورسی رو بنویس (مثل فولاد):",
@@ -30,24 +35,34 @@ async def button(update: Update, context: ContextTypes.DEFAULT_TYPE):
         "subscribe": "عضویت VIP: ۹۹ تتر\n@dragonfly_support",
         "support": "پشتیبانی: @dragonfly_support",
     }
-    
-    await q.edit_message_text(
-        texts.get(q.data, "به زودی…"),
+
+    await query.edit_message_text(
+        texts.get(query.data, "به زودی…"),
         reply_markup=InlineKeyboardMarkup([[InlineKeyboardButton("بازگشت", callback_data="start")]])
     )
 
-    if q.data == "start":
-        await q.edit_message_text(
+    if query.data == "start":
+        await query.edit_message_text(
             "به Dragonfly خوش اومدی\nسنجاقک بازار آماده پرواز کرد!\n\nیکی از گزینه‌ها رو انتخاب کن",
             reply_markup=main_menu()
         )
 
-app = Application.builder().token(TOKEN).build()
-app.add_handler(CommandHandler("start", start))
-app.add_handler(CallbackQueryHandler(button))
+async def handle_text(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    await update.message.reply_text("این بخش در حال توسعه است...")
 
-print("Dragonfly روی Render زنده شد!")
-app.run_polling(drop_pending_updates=True)
+def main():
+    app = Application.builder().token(TOKEN).build()
+
+    app.add_handler(CommandHandler("start", start))
+    app.add_handler(CallbackQueryHandler(button))
+    app.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, handle_text))
+
+    print("Dragonfly روی Render ۱۰۰٪ زنده شد و داره کار می‌کنه!")
+    app.run_polling(drop_pending_updates=True)
+
+if __name__ == "__main__":
+    main()
+
 
 
 
