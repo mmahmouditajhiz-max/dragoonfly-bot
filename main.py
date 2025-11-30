@@ -17,7 +17,7 @@ def run_flask():
 
 # ---------- تنظیمات لاگ ----------
 logging.basicConfig(level=logging.INFO)
-logger = logging.getLogger(_name_)
+logger = logging.getLogger(__name__)
 
 # ---------- توکن ----------
 TOKEN = os.getenv("TELEGRAM_TOKEN")
@@ -86,6 +86,7 @@ def main():
 
 if __name__ == "__main__":
     main()
+
 
 
 
