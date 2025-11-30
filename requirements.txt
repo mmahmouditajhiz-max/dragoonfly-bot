@@ -1,5 +1,13 @@
 python-telegram-bot==20.8
 Flask
+pandas
+numpy
+ta
+matplotlib
+mplfinance
+ccxt
+python-dotenv
+
 
 
 
