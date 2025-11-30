@@ -1,7 +1,4 @@
-ccxt
-pandas
-pandas-ta
-openai>=1.30.0
 python-telegram-bot==20.8
+
 
 
