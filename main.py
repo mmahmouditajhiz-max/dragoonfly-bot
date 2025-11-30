@@ -20,16 +20,16 @@ threading.Thread(target=run_flask, daemon=True).start()
 # ---------- تنظیمات ----------
 logging.basicConfig(level=logging.INFO)
 TOKEN = os.getenv("TELEGRAM_TOKEN")
-VIP_CHANNEL = "https://t.me/+tAS8b3RGZBcwMWJk"   # ← اسم کانال VIP خودت رو اینجا بنویس
+VIP_CHANNEL = "https://t.me/+0B-Q8wt-1zJhNDc8"   # ← اسم کانال VIP خودت رو اینجا بنویس
 
 # ---------- منوی اصلی ----------
 def main_menu():
     return InlineKeyboardMarkup([
-        [InlineKeyboardButton("تحلیل کریپتو", callback_data="crypto")],
-        [InlineKeyboardButton("تحلیل بورس", callback_data="stock")],
-        [InlineKeyboardButton("سیگنال VIP", callback_data="signal")],
-        [InlineKeyboardButton("عضویت در کانال", callback_data="subscribe")],
-        [InlineKeyboardButton("پشتیبانی", callback_data="support")],
+        [InlineKeyboardButton("📈تحلیل کریپتو", callback_data="crypto")],
+        [InlineKeyboardButton("📉تحلیل بورس", callback_data="stock")],
+        [InlineKeyboardButton("📊سیگنال VIP", callback_data="signal")],
+        [InlineKeyboardButton("📥عضویت در کانال", callback_data="subscribe")],
+        [InlineKeyboardButton("✉پشتیبانی", callback_data="support")],
     ])
 
 # ---------- دستورات ----------
@@ -54,7 +54,7 @@ async def button(update: Update, context: ContextTypes.DEFAULT_TYPE):
         back_btn = InlineKeyboardMarkup([[InlineKeyboardButton("بازگشت", callback_data="start")]])
         texts = {
             "stock": "تحلیل بورس به زودی…",
-            "signal": "برای دریافت سیگنال VIP باید عضو کانال باشی\nhttps://t.me/+tAS8b3RGZBcwMWJk",
+            "signal": "برای دریافت سیگنال VIP باید عضو کانال باشی\nhttps://t.me/+0B-Q8wt-1zJhNDc8",
             "subscribe": "عضویت در کانال VIP\nهزینه: ۹۹ تتر\n@dragonfly_support",
             "support": "پشتیبانی: @dragonfly_support"
         }
@@ -118,6 +118,7 @@ def main():
 
 if __name__ == "__main__":
     main()
+
 
 
 
