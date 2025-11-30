@@ -1,12 +1,13 @@
 python-telegram-bot==20.8
 Flask
+ccxt
 pandas
 numpy
 ta
 matplotlib
 mplfinance
-ccxt
-python-dotenv
+pip>=24.0
+
 
 
 
