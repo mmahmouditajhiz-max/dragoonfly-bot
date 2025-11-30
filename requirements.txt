@@ -1,11 +1,11 @@
 python-telegram-bot==20.8
 Flask
-ccxt
 pandas
 numpy
 ta
 matplotlib
 mplfinance
+ccxt==4.1.74
 
 
 
