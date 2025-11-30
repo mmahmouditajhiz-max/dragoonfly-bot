@@ -2,9 +2,11 @@ services:
   - type: web
     name: dragonfly-bot
     env: python
-    region: frankfurt            # ← فرانکفورت
+    region: frankfurt
     plan: free
-    buildCommand: bash .render/build.sh
+    buildCommand: |
+      pip install --upgrade pip setuptools wheel --no-cache-dir &&
+      pip install --no-cache-dir -r requirements.txt
     startCommand: python main.py
     autoDeploy: true
 
