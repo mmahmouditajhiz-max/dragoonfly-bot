@@ -54,17 +54,14 @@ def main():
     app.add_handler(CommandHandler("start", start))
     app.add_handler(CallbackQueryHandler(button_handler))
     
-    print("Dragonfly بدون مینا — تمیز و سریع!")
+    print("Dragonfly روی Render زنده شد و تا ابد آنلاینه!")
     
-    # keep-alive برای Railway (دیگه نمی‌میره)
+    # این خط بهترین حالت برای Render هست
     app.run_polling(drop_pending_updates=True)
-    while True:
-        import time
-        time.sleep(3600)
-        print("Keep-alive: Dragonfly هنوز زنده‌ست!")
 
 if __name__ == "__main__":
     main()
+
 
 
 
