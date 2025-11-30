@@ -6,7 +6,6 @@ numpy
 ta
 matplotlib
 mplfinance
-pip>=24.0
 
 
 
