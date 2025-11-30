@@ -1,6 +1,6 @@
 services:
   - type: web
-    name: dragonfly-bot
+    name: dragoonfly-bot
     env: python
     pythonVersion: "3.11.0"          # ← این خط خیلی مهمه!
     region: frankfurt
@@ -10,5 +10,6 @@ services:
       pip install -r requirements.txt
     startCommand: python main.py
     autoDeploy: true
+
 
 
