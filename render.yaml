@@ -1,8 +1,8 @@
 services:
   - type: web
-    name: dragoonfly-bot
+    name: dragonfly-bot
     env: python
-    pythonVersion: "3.11.0"          # ← این خط خیلی مهمه!
+    pythonVersion: "3.11.0"
     region: frankfurt
     plan: free
     buildCommand: |
@@ -10,6 +10,7 @@ services:
       pip install -r requirements.txt
     startCommand: python main.py
     autoDeploy: true
+    port: null                     # ← این خط کل مشکل رو حل می‌کنه!
 
 
 
