@@ -72,13 +72,18 @@ async def handle_text(update: Update, context: ContextTypes.DEFAULT_TYPE):
         await update.message.reply_text("در حال تحلیل... لطفاً صبر کن")
 
         # چک کردن عضویت در کانال VIP
-        is_vip = False
-        try:
-            member = await context.bot.get_chat_member(VIP_CHANNEL, user_id)
-            if member.status in ["member", "administrator", "creator"]:
-                is_vip = True
-        except:
-            pass  # اگر کانال وجود نداشت یا خطا داد → غیر VIP
+        # ادمین همیشه سیگنال کامل می‌گیره + اعضای VIP
+        ADMIN_ID = 7987989849  # ← آی‌دی تلگرام خودت رو اینجا بنویس (عددی)
+
+        is_vip = (user_id == ADMIN_ID)  # اول چک کن ادمینی یا نه
+        
+        if not is_vip:  # اگه ادمین نبود، چک کن تو کانال VIP هست یا نه
+            try:
+                member = await context.bot.get_chat_member(VIP_CHANNEL, user_id)
+                if member.status in ["member", "administrator", "creator"]:
+                    is_vip = True
+            except:
+                pass
 
         chart_buf, analysis_text = analyze_crypto(symbol, is_vip=is_vip)
 
@@ -113,6 +118,7 @@ def main():
 
 if __name__ == "__main__":
     main()
+
 
 
 
