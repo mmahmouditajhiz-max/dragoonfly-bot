@@ -6,6 +6,7 @@ numpy
 ta
 matplotlib
 mplfinance
+aiohttp
 
 
 
