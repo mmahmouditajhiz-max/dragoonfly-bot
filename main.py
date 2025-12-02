@@ -10,7 +10,7 @@ from telegram.ext import Application, CommandHandler, CallbackQueryHandler, Mess
 from analyzer import analyze_crypto  # فقط کریپتو جدا باشه
 
 # ==================== وب سرور (برای نخوابیدن) ====================
-flask_app = Flask(_name_)
+flask_app = Flask(__name__)
 @flask_app.route('/')
 def home():
     return "Dragonfly 24/7 - فعال", 200
@@ -161,6 +161,7 @@ def main():
 
 if __name__ == "__main__":
     main()
+
 
 
 
