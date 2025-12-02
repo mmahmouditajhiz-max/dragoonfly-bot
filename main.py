@@ -25,64 +25,86 @@ def save_vip(): json.dump(list(VIP_USERS), open(VIP_FILE, "w"))
 def is_vip(uid): return uid in VIP_USERS
 def add_vip(uid): VIP_USERS.add(uid); save_vip()
 
-# ←←← این تابع رو کامل جایگزین تابع قبلی analyze_stock کن ←←←
-def analyze_stock(symbol: str, is_vip: bool = True):
-    # همه حالت‌های ممکن نمادها (حتی با فاصله، حروف کوچک، نیم‌فاصله)
-    DATA = {
-        "فولاد": ("۴۸۲", "۵۱۵", "۵۴۲", "۴۶۵", "۸۸٪", "خرید قوی"),
-        "شپنا": ("۹۱۸", "۹۸۰", "۱۰۴۰", "۸۷۰", "۸۵٪", "خرید"),
-        "خودرو": ("۳۴۴", "۳۸۵", "۴۲۰", "۳۲۰", "۸۷٪", "خرید قوی"),
-        "خساپا": ("۲۸۷", "۳۱۵", "۳۴۵", "۲۶۵", "۸۳٪", "خرید"),
-        "وبملت": ("۳۸۹", "۴۲۰", "۴۵۵", "۳۶۵", "۸۶٪", "خرید"),
-        "فملی": ("۶۴۲", "۶۸۰", "۷۳۰", "۶۱۰", "۸۷٪", "خرید قوی"),
-        "شستا": ("۱۵۸", "۱۷۵", "۱۹۵", "۱۴۵", "۸۴٪", "خرید"),
-        "بوعلی": ("۱۲۴۵۰", "۱۳۴۰۰", "۱۴۵۰۰", "۱۱۸۰۰", "۹۰٪", "خرید خیلی قوی"),
-    }
+import aiohttp
+import re
 
-    s = symbol.strip().lower().replace(" ", "").replace("‌ی", "ی")  # همه حالت‌ها رو یکسان می‌کنه
-    found = None
-    for key in DATA.keys():
-        if key in s or s in key.lower():
-            found = key
-            break
+async def analyze_stock(symbol: str, is_vip: bool = True):
+    symbol = symbol.strip().replace(" ", "")
+    
+    # اگر نماد فارسی باشه به انگلیسی تبدیل می‌کنه (مثل فولاد → fould)
+    translate = str.maketrans("فولادشپنا خودروخساپاوبملتفملیشستابوعلی", "FOLDShepnaKhodroKhesapaWebmeltFmeliShastaBouali")
+    eng_symbol = symbol.translate(translate)
+    
+    # اگر کاربر انگلیسی نوشت مستقیم استفاده می‌کنه، اگر فارسی نوشت تبدیل می‌کنه
+    search = eng_symbol if len(eng_symbol) > 2 else symbol
+    
+    url = f"http://tsetmc.ir/tsev2/data/instinfofast.aspx?i={search}&c=27"
+    try:
+        async with aiohttp.ClientSession() as session:
+            async with session.get(url) as resp:
+                if resp.status != 200:
+                    return None, "نماد پیدا نشد یا خطای سرور TSETMC"
+                text = await resp.text()
+    except:
+        return None, "خطا در اتصال به بورس (TSETMC)"
 
-    if not found:
-        return None, "نماد پیدا نشد!\n\nمثال صحیح:\nفولاد\nشپنا\nخودرو\nوبملت\nفملی\nشستا\nبوعلی"
+    # پارس کردن دیتا از TSETMC
+    try:
+        parts = text.split(";")[0].split(",")
+        if len(parts) < 10:
+            return None, "نماد معتبر نیست یا امروز معامله نداشته"
 
-    price, t1, t2, stop, power, status = DATA[found]
-    text = f"""
-تحلیل زنده نماد *{found}*
+        close_price = int(float(parts[3]))          # قیمت پایانی
+        last_price = int(float(parts[2]))           # آخرین قیمت
+        high = int(float(parts[6]))
+        low = int(float(parts[7]))
+        volume = int(parts[8])
+        name_persian = parts[12].split(" ")[0] if len(parts) > 12 else symbol
 
-وضعیت: *{status}*
-قیمت فعلی: {price} تومان
-تارگت اول: {t1}
-تارگت دوم: {t2}
-استاپ لاس: {stop}
-قدرت سیگنال: {power}
+        # تحلیل خودکار (هوش مصنوعی ساده)
+        change_percent = round((last_price - close_price) / close_price * 100, 2) if close_price else 0
+        power = "خرید خیلی قوی" if change_percent > 3 else "خرید قوی" if change_percent > 1 else "خرید" if change_percent > 0 else "خنثی"
+        
+        t1 = int(last_price * 1.05)
+        t2 = int(last_price * 1.10)
+        stop = int(last_price * 0.94)
 
-حجم امروز بالا | خریدار غالب
-احتمال موفقیت: بسیار بالا
+        text = f"""
+تحلیل زنده نماد *{name_persian}*
 
-#بورس_تهران #دراگونفلای
-    """.strip()
+وضعیت: *{power}*
+قیمت فعلی: {last_price:,} تومان
+تغییرات امروز: {change_percent:+}%
+بالاترین: {high:,} | پایین‌ترین: {low:,}
+حجم معاملات: {volume:,}
 
-    # چارت خفن
-    fig, ax = plt.subplots(figsize=(9, 5.5), facecolor="black")
-    ax.set_facecolor("black")
-    prices = [float(price.replace(",", ""))-30, float(price.replace(",", ""))-10, float(price.replace(",", "")), float(t1.replace(",", "")), float(t2.replace(",", ""))]
-    ax.plot(prices, color="#00ff88", linewidth=4, marker="o", markersize=10)
-    ax.set_title(f"نماد: {found}", color="white", fontsize=18, weight="bold")
-    ax.grid(True, alpha=0.3, color="#333")
-    ax.tick_params(colors="white")
-    ax.text(0, prices[0], "استاپ", color="#ff4444", weight="bold", fontsize=12)
-    ax.text(4, prices[4], "تارگت", color="#00ff88", weight="bold", fontsize=12)
+تارگت اول: {t1:,}
+تارگت دوم: {t2:,}
+استاپ لاس: {stop:,}
 
-    buf = io.BytesIO()
-    plt.savefig(buf, format='png', bbox_inches='tight', facecolor='black', dpi=150)
-    plt.close()
-    buf.seek(0)
-    return buf, text
+دیتا زنده از TSETMC
+#بورس #دراگونفلای
+        """.strip()
 
+        # چارت خفن
+        fig, ax = plt.subplots(figsize=(9, 5.5), facecolor="black")
+        ax.set_facecolor("black")
+        prices = [low, close_price, last_price, t1, t2]
+        ax.plot(prices, color="#00ff88" if change_percent >= 0 else "#ff4444", linewidth=5, marker="o", markersize=10)
+        ax.set_title(f"{name_persian} - {last_price:,}", color="white", fontsize=18, weight="bold")
+        ax.grid(True, alpha=0.3)
+        ax.tick_params(colors="white")
+        ax.text(0, low, "پایین", color="#ff4444", weight="bold")
+        ax.text(4, t2, "تارگت", color="#00ff88", weight="bold")
+
+        buf = io.BytesIO()
+        plt.savefig(buf, format='png', bbox_inches='tight', facecolor='black', dpi=150)
+        plt.close()
+        buf.seek(0)
+        return buf, text
+
+    except Exception as e:
+        return None, f"خطا در تحلیل نماد: {symbol}"
 # منو
 def menu():
     return InlineKeyboardMarkup([
@@ -150,6 +172,7 @@ def main():
 
 if __name__ == "__main__":
     main()
+
 
 
 
