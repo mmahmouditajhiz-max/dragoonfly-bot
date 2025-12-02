@@ -1,4 +1,5 @@
 # main.py - نسخه نهایی 100% کارکرد روی Render
+import aiohttp
 import os, json, threading, io, matplotlib.pyplot as plt
 from flask import Flask
 from telegram import Update, InlineKeyboardButton, InlineKeyboardMarkup, InputFile
@@ -28,83 +29,96 @@ def add_vip(uid): VIP_USERS.add(uid); save_vip()
 import aiohttp
 import re
 
+### کد نهایی تابع analyze_stock (کپی کن جایگزین کن)
+
+```python
 async def analyze_stock(symbol: str, is_vip: bool = True):
     symbol = symbol.strip().replace(" ", "")
     
-    # اگر نماد فارسی باشه به انگلیسی تبدیل می‌کنه (مثل فولاد → fould)
-    translate = str.maketrans("فولادشپنا خودروخساپاوبملتفملیشستابوعلی", "FOLDShepnaKhodroKhesapaWebmeltFmeliShastaBouali")
-    eng_symbol = symbol.translate(translate)
+    # تبدیل فارسی به لاتین برای جستجو در TSETMC
+    persian_to_latin = str.maketrans("آابپتثجچحخدذرزژسشصضطظعغفقکگلمنوهی", "ابپتثجچحخدذرزژسشصضطظعغفقکگلمنوهی")
+    latin_symbol = symbol.translate(persian_to_latin)
     
-    # اگر کاربر انگلیسی نوشت مستقیم استفاده می‌کنه، اگر فارسی نوشت تبدیل می‌کنه
-    search = eng_symbol if len(eng_symbol) > 2 else symbol
+    # نقشه دستی برای نمادهای معروف (دقیق‌تر)
+    symbol_map = {
+        "فولاد": "46348559193224090", "شپنا": "35741121942139038", "خودرو": "44891482026867834",
+        "خساپا": "35425587644337450", "وبملت": "24003223644746970", "فملی": "65036349136139138",
+        "شستا": "39159501605079204", "ذوب": "4263736151253393", "شپدیس": "42714645443964670",
+        # می‌تونی ۱۰۰ تا دیگه هم اضافه کنی — مهم نیست
+    }
     
-    url = f"http://tsetmc.ir/tsev2/data/instinfofast.aspx?i={search}&c=27"
+    inst_id = symbol_map.get(symbol) or symbol_map.get(latin_symbol)
+    
+    if not inst_id:
+        return None, "نماد شناخته نشد!\nچند نماد معروف رو امتحان کن:\nفولاد، شپنا، خودرو، وبملت، فملی، شستا، ذوب"
+
+    url = f"http://tsetmc.ir/tsev2/data/instinfofast.aspx?i={inst_id}&c=27"
+    
     try:
-        async with aiohttp.ClientSession() as session:
+        async with aiohttp.ClientSession(timeout=aiohttp.ClientTimeout(total=10)) as session:
             async with session.get(url) as resp:
                 if resp.status != 200:
-                    return None, "نماد پیدا نشد یا خطای سرور TSETMC"
-                text = await resp.text()
+                    return None, "سرور بورس در دسترس نیست"
+                data = await resp.text()
     except:
-        return None, "خطا در اتصال به بورس (TSETMC)"
+        return None, "خطا در اتصال به TSETMC"
 
-    # پارس کردن دیتا از TSETMC
     try:
-        parts = text.split(";")[0].split(",")
-        if len(parts) < 10:
-            return None, "نماد معتبر نیست یا امروز معامله نداشته"
-
-        close_price = int(float(parts[3]))          # قیمت پایانی
-        last_price = int(float(parts[2]))           # آخرین قیمت
+        parts = data.split(";")[0].split(",")
+        last_price = int(float(parts[2]))
+        close_price = int(float(parts[3]))
         high = int(float(parts[6]))
         low = int(float(parts[7]))
         volume = int(parts[8])
-        name_persian = parts[12].split(" ")[0] if len(parts) > 12 else symbol
+        name = parts[12].split()[0] if len(parts) > 12 else symbol
 
-        # تحلیل خودکار (هوش مصنوعی ساده)
         change_percent = round((last_price - close_price) / close_price * 100, 2) if close_price else 0
-        power = "خرید خیلی قوی" if change_percent > 3 else "خرید قوی" if change_percent > 1 else "خرید" if change_percent > 0 else "خنثی"
         
-        t1 = int(last_price * 1.05)
-        t2 = int(last_price * 1.10)
-        stop = int(last_price * 0.94)
+        if change_percent > 4: status = "خرید خیلی قوی"
+        elif change_percent > 1.5: status = "خرید قوی"
+        elif change_percent > 0: status = "خرید"
+        elif change_percent > -1.5: status = "خنثی"
+        else: status = "فروش"
+
+        t1 = int(last_price * 1.06)
+        t2 = int(last_price * 1.12)
+        stop = int(last_price * 0.93)
 
         text = f"""
-تحلیل زنده نماد *{name_persian}*
+تحلیل زنده *{name}*
 
-وضعیت: *{power}*
-قیمت فعلی: {last_price:,} تومان
-تغییرات امروز: {change_percent:+}%
-بالاترین: {high:,} | پایین‌ترین: {low:,}
-حجم معاملات: {volume:,}
+وضعیت: *{status}*
+قیمت آخرین معامله: {last_price:,} تومان
+تغییر: {change_percent:+}%
+حجم: {volume:,}
 
 تارگت اول: {t1:,}
 تارگت دوم: {t2:,}
 استاپ لاس: {stop:,}
 
-دیتا زنده از TSETMC
+دیتا زنده از TSETMC.ir
 #بورس #دراگونفلای
         """.strip()
 
-        # چارت خفن
-        fig, ax = plt.subplots(figsize=(9, 5.5), facecolor="black")
-        ax.set_facecolor("black")
+        fig, ax = plt.subplots(figsize=(9,5.5), facecolor="#000")
+        ax.set_facecolor("#000")
         prices = [low, close_price, last_price, t1, t2]
-        ax.plot(prices, color="#00ff88" if change_percent >= 0 else "#ff4444", linewidth=5, marker="o", markersize=10)
-        ax.set_title(f"{name_persian} - {last_price:,}", color="white", fontsize=18, weight="bold")
-        ax.grid(True, alpha=0.3)
+        color = "#00ff88" if change_percent >= 0 else "#ff4444"
+        ax.plot(prices, color=color, linewidth=5, marker="o", markersize=11)
+        ax.set_title(f"{name} → {last_price:,}", color="white", fontsize=18, weight="bold")
+        ax.grid(True, alpha=0.3, color="#333")
         ax.tick_params(colors="white")
-        ax.text(0, low, "پایین", color="#ff4444", weight="bold")
-        ax.text(4, t2, "تارگت", color="#00ff88", weight="bold")
+        ax.text(0, low, "Low", color="#ff4444", weight="bold")
+        ax.text(4, t2, "Target", color="#00ff88", weight="bold")
 
         buf = io.BytesIO()
-        plt.savefig(buf, format='png', bbox_inches='tight', facecolor='black', dpi=150)
+        plt.savefig(buf, format='png', bbox_inches='tight', facecolor='#000', dpi=150)
         plt.close()
         buf.seek(0)
         return buf, text
 
-    except Exception as e:
-        return None, f"خطا در تحلیل نماد: {symbol}"
+    except:
+        return None, "خطا در پردازش داده‌های بورس"
 # منو
 def menu():
     return InlineKeyboardMarkup([
@@ -137,7 +151,7 @@ async def text(update: Update, context: ContextTypes.DEFAULT_TYPE):
     mode = context.user_data["mode"]
 
     if mode == "stock":
-        chart, txt = analyze_stock(update.message.text)
+        chart, txt = await analyze_stock(update.message.text, is_vip=is_vip(uid))
         if chart:
             await update.message.reply_photo(InputFile(chart, "stock.png"), caption=txt, parse_mode="Markdown")
         else:
@@ -172,6 +186,7 @@ def main():
 
 if __name__ == "__main__":
     main()
+
 
 
 
