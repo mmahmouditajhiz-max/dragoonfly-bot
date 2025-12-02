@@ -1,101 +1,114 @@
-# analyzer.py
-import ccxt
-import pandas as pd
-import ta
-import mplfinance as mpf
-import io
-from datetime import datetime
+# main.py - نسخه نهایی با ارسال خودکار سیگنال به کانال VIP
+import os
+import threading
+from flask import Flask
+from telegram import Update, InlineKeyboardButton, InlineKeyboardMarkup, InputFile
+from telegram.ext import Application, CommandHandler, CallbackQueryHandler, MessageHandler, ContextTypes, filters
+from analyzer import analyze_crypto
 
-exchange = ccxt.binance({
-    'options': {'defaultType': 'future'},
-    'enableRateLimit': True
-})
+# وب سرور برای Render
+flask_app = Flask(__name__)
+@flask_app.route('/')
+def home(): return "Dragonfly 24/7", 200
+threading.Thread(target=lambda: flask_app.run(host="0.0.0.0", port=10000), daemon=True).start()
 
-def get_data(symbol, timeframe='4h', limit=100):
-    try:
-        bars = exchange.fetch_ohlcv(symbol, timeframe=timeframe, limit=limit)
-        df = pd.DataFrame(bars, columns=['timestamp', 'open', 'high', 'low', 'close', 'volume'])
-        df['timestamp'] = pd.to_datetime(df['timestamp'], unit='ms')
-        return df
-    except Exception as e:
-        print(f"Error fetching data: {e}")
-        return None
+# تنظیمات
+TOKEN = os.getenv("TELEGRAM_TOKEN")
+VIP_CHANNEL_ID = -1003186797547   # ← آیدی کانال VIP شما
+ADMIN_ID = 7987989849             # ← آیدی ادمین (خودت)
 
-def analyze_crypto(symbol, is_vip=False):
-    df = get_data(symbol)
-    if df is None or len(df) < 50:
-        return None, "داده کافی نیست یا نماد اشتباهه"
+# منو
+def main_menu():
+    return InlineKeyboardMarkup([
+        [InlineKeyboardButton("تحلیل کریپتو", callback_data="crypto")],
+        [InlineKeyboardButton("کانال VIP", url="https://t.me/+0B-Q8wt-1zJhNDc8")],
+        [InlineKeyboardButton("عضویت VIP", callback_data="buy")],
+        [InlineKeyboardButton("پشتیبانی", callback_data="support")],
+    ])
 
-    close = df['close']
-    df['ema20'] = ta.trend.EMAIndicator(close, window=20).ema_indicator()
-    df['ema50'] = ta.trend.EMAIndicator(close, window=50).ema_indicator()
-    df['rsi'] = ta.momentum.RSIIndicator(close, window=14).rsi()
-    macd = ta.trend.MACD(close)
-    df['macd'] = macd.macd()
-    df['macd_signal'] = macd.macd_signal()
+async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    await update.message.reply_text("به Dragonfly خوش اومدی!\nیکی رو انتخاب کن:", reply_markup=main_menu())
 
-    last = df.iloc[-1]
-    prev = df.iloc[-2]
+async def button(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    q = update.callback_query
+    await q.answer()
 
-    # تولید چارت
-    buf = io.BytesIO()
-    mpf.plot(df.set_index('timestamp').tail(50),
-             type='candle', style='charles', mav=(20,50), volume=True,
-             title=f"{symbol} - Dragonfly Analysis",
-             savefig=dict(fname=buf, format='png', bbox_inches='tight'))
-    buf.seek(0)
+    if q.data == "crypto":
+        await q.edit_message_text("نماد کریپتو بفرست (مثل BTC یا BTCUSDT):")
+        context.user_data["mode"] = "crypto"
 
-    # متن عمومی
-    base_text = f"""
-{symbol.upper()} - تحلیل لحظه‌ای
+    elif q.data == "buy":
+        await q.edit_message_text("عضویت VIP: ۹۹ تتر ماهانه\nپرداخت به @dragonfly_support\nرسید بفرست")
 
-قیمت فعلی: ${last['close']:.4f}
-تغییر ۲۴h: {((last['close']/df['close'].iloc[-25]-1)*100):.2f}%
+    elif q.data == "support":
+        await q.edit_message_text("پشتیبانی ۲۴ ساعته:\n@dragonfly_support", reply_markup=main_menu())
 
-RSI (14): {last['rsi']:.1f}
-MACD: {'صعودی' if last['macd'] > last['macd_signal'] else 'نزولی'}
-EMA20 vs EMA50: {'طلایی' if last['ema20'] > last['ema50'] else 'مرگ'}
-
-@dragonfly_support
-"""
-
-    if not is_vip:
-        return buf, base_text + "\n\nبرای سیگنال دقیق خرید/فروش و تارگت، باید عضو کانال VIP باشی"
-
-    # فقط برای VIP
-    signal = entry = tp1 = tp2 = sl = ""
-
-    if (last['close'] > last['ema20'] > last['ema50'] and
-        last['rsi'] < 68 and last['macd'] > last['macd_signal'] and
-        prev['macd'] <= prev['macd_signal']):
-        signal = "BUY"
-        entry = last['close']
-        tp1 = round(entry * 1.03, 4)
-        tp2 = round(entry * 1.06, 4)
-        sl = round(entry * 0.985, 4)
-
-    elif (last['close'] < last['ema20'] < last['ema50'] and
-          last['rsi'] > 32 and last['macd'] < last['macd_signal'] and
-          prev['macd'] >= prev['macd_signal']):
-        signal = "SELL"
-        entry = last['close']
-        tp1 = round(entry * 0.97, 4)
-        tp2 = round(entry * 0.94, 4)
-        sl = round(entry * 1.015, 4)
     else:
-        return buf, base_text + "\n\nدر حال حاضر سیگنال قوی نداریم — صبر کن!"
+        try:
+            await q.edit_message_text("منوی اصلی:", reply_markup=main_menu())
+        except:
+            pass
 
-    vip_text = f"""
-{signal} سیگنال VIP
+async def text(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    if context.user_data.get("mode") != "crypto":
+        return
 
-ورود: ${entry:.4f}
-تارگت ۱: ${tp1:.4f}
-تارگت ۲: ${tp2:.4f}
-استاپ لاس: ${sl:.4f}
+    sym = update.message.text.strip().upper()
+    if not sym.endswith("USDT"):
+        sym += "USDT"
 
-ریسک: ۱.۵٪ — ریوارد: تا ۶٪
-قدرت سیگنال: قوی
+    user_id = update.effective_user.id
+    is_vip_user = (user_id == ADMIN_ID)  # ادمین همیشه VIPه
 
-@dragonfly_support
-"""
-    return buf, (base_text + "\n" + vip_text).strip()
+    # چک کردن عضویت در کانال VIP
+    try:
+        member = await context.bot.get_chat_member(VIP_CHANNEL_ID, user_id)
+        if member.status in ["member", "administrator", "creator"]:
+            is_vip_user = True
+    except:
+        pass  # اگه خطا داد، یعنی عضو نیست
+
+    chart, txt = analyze_crypto(sym, is_vip=is_vip_user)
+
+    if chart:
+        await update.message.reply_photo(InputFile(chart, "chart.png"), caption=txt)
+
+        # ارسال خودکار به کانال VIP فقط اگه کاربر VIP باشه
+        if is_vip_user:
+            try:
+                await context.bot.send_photo(
+                    chat_id=VIP_CHANNEL_ID,
+                    photo=chart,
+                    caption=f"سیگنال VIP 🔥\n\n{txt}\n\n@dragonfly_support",
+                    parse_mode="Markdown"
+                )
+            except Exception as e:
+                print("خطا در ارسال به کانال VIP:", e)
+    else:
+        await update.message.reply_text(txt or "نماد پیدا نشد!")
+
+    await update.message.reply_text("تحلیل تموم شد", reply_markup=main_menu())
+    context.user_data.clear()
+
+# دستور اضافه کردن VIP (فقط ادمین)
+async def addvip(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    if update.effective_user.id != ADMIN_ID:
+        return
+    try:
+        uid = int(context.args[0])
+        await context.bot.send_message(uid, "شما به VIP اضافه شدید!")
+        await update.message.reply_text("کاربر اضافه شد")
+    except:
+        await update.message.reply_text("استفاده: /addvip 123456789")
+
+def main():
+    app = Application.builder().token(TOKEN).build()
+    app.add_handler(CommandHandler("start", start))
+    app.add_handler(CallbackQueryHandler(button))
+    app.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, text))
+    app.add_handler(CommandHandler("addvip", addvip))
+    print("Dragonfly با ارسال خودکار سیگنال VIP راه‌اندازی شد!")
+    app.run_polling(drop_pending_updates=True)
+
+if __name__ == "__main__":
+    main()
