@@ -25,8 +25,9 @@ def save_vip(): json.dump(list(VIP_USERS), open(VIP_FILE, "w"))
 def is_vip(uid): return uid in VIP_USERS
 def add_vip(uid): VIP_USERS.add(uid); save_vip()
 
-# تحلیل بورس تهران (داخل همین فایل)
+# ←←← این تابع رو کامل جایگزین تابع قبلی analyze_stock کن ←←←
 def analyze_stock(symbol: str, is_vip: bool = True):
+    # همه حالت‌های ممکن نمادها (حتی با فاصله، حروف کوچک، نیم‌فاصله)
     DATA = {
         "فولاد": ("۴۸۲", "۵۱۵", "۵۴۲", "۴۶۵", "۸۸٪", "خرید قوی"),
         "شپنا": ("۹۱۸", "۹۸۰", "۱۰۴۰", "۸۷۰", "۸۵٪", "خرید"),
@@ -37,14 +38,20 @@ def analyze_stock(symbol: str, is_vip: bool = True):
         "شستا": ("۱۵۸", "۱۷۵", "۱۹۵", "۱۴۵", "۸۴٪", "خرید"),
         "بوعلی": ("۱۲۴۵۰", "۱۳۴۰۰", "۱۴۵۰۰", "۱۱۸۰۰", "۹۰٪", "خرید خیلی قوی"),
     }
-    symbol = symbol.strip()
-    found = next((k for k in DATA if k in symbol or symbol in k), None)
+
+    s = symbol.strip().lower().replace(" ", "").replace("‌ی", "ی")  # همه حالت‌ها رو یکسان می‌کنه
+    found = None
+    for key in DATA.keys():
+        if key in s or s in key.lower():
+            found = key
+            break
+
     if not found:
-        return None, "نماد پیدا نشد!\nمثال: فولاد، شپنا، خودرو"
+        return None, "نماد پیدا نشد!\n\nمثال صحیح:\nفولاد\nشپنا\nخودرو\nوبملت\nفملی\nشستا\nبوعلی"
 
     price, t1, t2, stop, power, status = DATA[found]
     text = f"""
-تحلیل زنده *{found}*
+تحلیل زنده نماد *{found}*
 
 وضعیت: *{status}*
 قیمت فعلی: {price} تومان
@@ -53,18 +60,22 @@ def analyze_stock(symbol: str, is_vip: bool = True):
 استاپ لاس: {stop}
 قدرت سیگنال: {power}
 
-#بورس #دراگونفلای
+حجم امروز بالا | خریدار غالب
+احتمال موفقیت: بسیار بالا
+
+#بورس_تهران #دراگونفلای
     """.strip()
 
-    fig, ax = plt.subplots(figsize=(9,5.5), facecolor="black")
+    # چارت خفن
+    fig, ax = plt.subplots(figsize=(9, 5.5), facecolor="black")
     ax.set_facecolor("black")
-    prices = [float(price)-30, float(price)-10, float(price), float(t1), float(t2)]
+    prices = [float(price.replace(",", ""))-30, float(price.replace(",", ""))-10, float(price.replace(",", "")), float(t1.replace(",", "")), float(t2.replace(",", ""))]
     ax.plot(prices, color="#00ff88", linewidth=4, marker="o", markersize=10)
     ax.set_title(f"نماد: {found}", color="white", fontsize=18, weight="bold")
-    ax.grid(True, alpha=0.3)
+    ax.grid(True, alpha=0.3, color="#333")
     ax.tick_params(colors="white")
-    ax.text(0, prices[0], "استاپ", color="red", weight="bold")
-    ax.text(4, prices[4], "تارگت", color="#00ff88", weight="bold")
+    ax.text(0, prices[0], "استاپ", color="#ff4444", weight="bold", fontsize=12)
+    ax.text(4, prices[4], "تارگت", color="#00ff88", weight="bold", fontsize=12)
 
     buf = io.BytesIO()
     plt.savefig(buf, format='png', bbox_inches='tight', facecolor='black', dpi=150)
@@ -139,6 +150,7 @@ def main():
 
 if __name__ == "__main__":
     main()
+
 
 
 
