@@ -57,7 +57,6 @@ MACD: {'صعودی' if last['macd'] > last['macd_signal'] else 'نزولی'}
 EMA20 vs EMA50: {'طلایی' if last['ema20'] > last['ema50'] else 'مرگ'}
 
 @dragonfly_support
-"""
 
     if not is_vip:
         return buf, base_text + "\n\nبرای سیگنال دقیق خرید/فروش و تارگت، باید عضو کانال VIP باشی"
@@ -99,4 +98,5 @@ EMA20 vs EMA50: {'طلایی' if last['ema20'] > last['ema50'] else 'مرگ'}
 @dragonfly_support
 """
     return buf, (base_text + "\n" + vip_text).strip()
+
 
