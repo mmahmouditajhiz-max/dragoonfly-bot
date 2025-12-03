@@ -423,18 +423,26 @@ def main():
     app.add_handler(CallbackQueryHandler(button))
     app.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, handle_text))
     
-    # شروع اسکنر خودکار با تاخیر 10 ثانیه
-    print("🔄 راه‌اندازی اسکنر 24/7...")
-    app.job_queue.run_once(lambda ctx: start_scanner(app), 10)
-    
     print("✅ Dragonfly با موفقیت راه‌اندازی شد!")
     print(f"👑 آیدی ادمین: {ADMIN_ID}")
     print("🤖 ربات در حال اجرا...")
     
+    # راه‌اندازی اسکنر در یک تهد جداگانه
+    def start_scanner_in_thread():
+        import time
+        time.sleep(5)  # ۵ ثانیه صبر کن تا ربات کامل بالا بیاد
+        start_scanner(app)  # اسکنر رو شروع کن
+    
+    # اجرای اسکنر در تهد جداگانه
+    scanner_thread = threading.Thread(target=start_scanner_in_thread, daemon=True)
+    scanner_thread.start()
+    
+    # اجرای ربات
     app.run_polling(allowed_updates=Update.ALL_TYPES, drop_pending_updates=True)
 
 if __name__ == "__main__":
-    main()     
+    main()   
+
 
 
 
