@@ -1,6 +1,7 @@
 import os
 import logging
 import threading
+from scanner import start_scanner
 from flask import Flask
 from telegram import Update, InlineKeyboardButton, InlineKeyboardMarkup, InputFile
 from telegram.ext import Application, CommandHandler, CallbackQueryHandler, MessageHandler, ContextTypes, filters
@@ -115,10 +116,11 @@ def main():
 
     print("Dragonfly با سیستم VIP راه‌اندازی شد!")
     app.run_polling(drop_pending_updates=True)
-
+    app.job_queue.run_once(lambda ctx: start_scanner(app), 5)
 if __name__ == "__main__":
     main()
  
+
 
 
 
