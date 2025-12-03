@@ -6,7 +6,7 @@ import pandas as pd
 import ta
 from vip_manager import load_vip_users, is_vip
 
-exchange = ccxt.binaxnce({'enableRateLimit': True, 'options': {'defaultType': 'future'}})
+exchange = ccxt.binance({'enableRateLimit': True, 'options': {'defaultType': 'future'}})
 ADMIN_ID = 7987989849  # ← آیدی خودت
 
 # لیست نمادهای بیشتر
