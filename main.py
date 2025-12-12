@@ -1,7 +1,6 @@
 import os
 import logging
 import threading
-from scanner import start_scanner
 from flask import Flask
 from telegram import Update, InlineKeyboardButton, InlineKeyboardMarkup, InputFile
 from telegram.ext import Application, CommandHandler, CallbackQueryHandler, MessageHandler, ContextTypes, filters
@@ -120,6 +119,7 @@ def main():
 if __name__ == "__main__":
     main()
  
+
 
 
 
