@@ -27,7 +27,6 @@ def main_menu():
     return InlineKeyboardMarkup([
         [InlineKeyboardButton("📈تحلیل کریپتو", callback_data="crypto")],
         [InlineKeyboardButton("📉تحلیل بورس", callback_data="stock")],
-        [InlineKeyboardButton("📊سیگنال VIP", callback_data="signal")],
         [InlineKeyboardButton("📥عضویت در کانال", callback_data="subscribe")],
         [InlineKeyboardButton("✉پشتیبانی", callback_data="support")],
     ])
@@ -119,6 +118,7 @@ def main():
 if __name__ == "__main__":
     main()
  
+
 
 
 
