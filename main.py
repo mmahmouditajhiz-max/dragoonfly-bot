@@ -4,7 +4,7 @@ import threading
 from flask import Flask
 from telegram import Update, InlineKeyboardButton, InlineKeyboardMarkup, InputFile
 from telegram.ext import Application, CommandHandler, CallbackQueryHandler, MessageHandler, ContextTypes, filters
-from analyzer import analyze_crypto
+from analyzer import analyzer_crypto
 
 # ---------- Fake Web Server برای Render (تا نخوابه) ----------
 flask_app = Flask(__name__)
@@ -118,6 +118,7 @@ if __name__ == "__main__":
     main()
 
  
+
 
 
 
