@@ -33,7 +33,7 @@ def main_menu():
 # ---------- دستورات ----------
 async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
     text = ("به Dragonfly خوش اومدی\n"
-            "سنجاقک بازار آماده پرواز کردنه!\n\n"
+            "سنجاقک بازار آماده شکار کردنه!\n\n"
             "یکی از گزینه‌ها رو انتخاب کن")
     await update.message.reply_text(text, reply_markup=main_menu())
 
@@ -53,7 +53,7 @@ async def button(update: Update, context: ContextTypes.DEFAULT_TYPE):
         texts = {
             "stock": "تحلیل بورس به زودی…",
             "signal": "برای دریافت سیگنال VIP باید عضو کانال باشی\nhttps://t.me/+0B-Q8wt-1zJhNDc8",
-            "subscribe": "عضویت در کانال VIP\nهزینه: 0 تتر\n@dragonfly_support",
+            "subscribe": "عضویت در کانال VIP\nهزینه: 99 تتر\nhttps://t.me/+0B-Q8wt-1zJhNDc8",
             "support": "پشتیبانی: @dragonfly_support"
         }
         await query.edit_message_text(texts.get(query.data, "به زودی…"), reply_markup=back_btn)
@@ -118,6 +118,7 @@ if __name__ == "__main__":
     main()
 
  
+
 
 
 
