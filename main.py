@@ -1,6 +1,7 @@
 import os
 import logging
 import threading
+import time
 from flask import Flask
 from telegram import Update, InlineKeyboardButton, InlineKeyboardMarkup, InputFile
 from telegram.ext import Application, CommandHandler, CallbackQueryHandler, MessageHandler, ContextTypes, filters
@@ -18,7 +19,7 @@ if not TOKEN:
     logger.error("TELEGRAM_TOKEN not found in environment variables!")
     raise ValueError("لطفا TELEGRAM_TOKEN را در متغیرهای محیطی تنظیم کنید")
 
-VIP_CHANNEL = "@your_vip_channel"  # یا "https://t.me/+0B-Q8wt-1zJhNDc8"
+VIP_CHANNEL = "https://t.me/+0B-Q8wt-1zJhNDc8"   # از لینک استفاده کن بهتره
 ADMIN_ID = 7987989849  # آی‌دی عددی خودت
 
 # ---------- Flask برای Render ----------
@@ -26,23 +27,29 @@ flask_app = Flask(__name__)
 
 @flask_app.route('/')
 def home():
-    return "Dragonfly 24/7 - ربات زنده‌ست", 200
+    return "Dragonfly 24/7 - ربات زنده‌ست 🐉", 200
 
 @flask_app.route('/health')
 def health():
     return "OK", 200
 
 def run_flask():
-    """Flask را در یک پورت جداگانه اجرا کن"""
-    # پورت 8080 یا هر پورت دیگه‌ای غیر از 8443 و 10000
-    flask_app.run(host="0.0.0.0", port=8080, debug=False, use_reloader=False)
+    """Flask را در پورت Render اجرا کن"""
+    port = int(os.environ.get("PORT", 8080))
+    flask_app.run(
+        host="0.0.0.0", 
+        port=port, 
+        debug=False, 
+        use_reloader=False,
+        threaded=True
+    )
 
 # ---------- منوی اصلی ----------
 def main_menu():
     return InlineKeyboardMarkup([
         [InlineKeyboardButton("📈 تحلیل کریپتو", callback_data="crypto")],
         [InlineKeyboardButton("📥 عضویت در کانال VIP", callback_data="subscribe")],
-        [InlineKeyboardButton("✉ پشتیبانی", callback_data="support")],
+        [InlineKeyboardButton("✉️ پشتیبانی", callback_data="support")],
     ])
 
 # ---------- دستورات ----------
@@ -52,7 +59,10 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
         "سنجاقک بازار آماده شکار کردنه!\n\n"
         "یکی از گزینه‌ها رو انتخاب کن:"
     )
-    await update.message.reply_text(text, reply_markup=main_menu())
+    if update.message:
+        await update.message.reply_text(text, reply_markup=main_menu())
+    elif update.callback_query:
+        await update.callback_query.edit_message_text(text, reply_markup=main_menu())
 
 async def button(update: Update, context: ContextTypes.DEFAULT_TYPE):
     query = update.callback_query
@@ -64,12 +74,12 @@ async def button(update: Update, context: ContextTypes.DEFAULT_TYPE):
         return
 
     elif query.data == "start":
-        await query.edit_message_text("منوی اصلی:", reply_markup=main_menu())
+        await start(update, context)
         return
 
     elif query.data == "subscribe":
         text = (
-            "🌟 **عضویت در کانال VIP** 🌟\n\n"
+            "🌟 عضویت در کانال VIP 🌟\n\n"
             "با عضویت در کانال VIP:\n"
             "✅ دریافت سیگنال‌های لحظه‌ای\n"
             "✅ تحلیل‌های تخصصی\n"
@@ -82,7 +92,7 @@ async def button(update: Update, context: ContextTypes.DEFAULT_TYPE):
         text = "به زودی ویژگی‌های بیشتری اضافه میشه... 🚀"
 
     back_btn = InlineKeyboardMarkup([[InlineKeyboardButton("🔙 بازگشت به منو", callback_data="start")]])
-    await query.edit_message_text(text, reply_markup=back_btn, parse_mode="Markdown")
+    await query.edit_message_text(text, reply_markup=back_btn)
 
 # ---------- دریافت نماد و تحلیل ----------
 async def handle_text(update: Update, context: ContextTypes.DEFAULT_TYPE):
@@ -109,18 +119,20 @@ async def handle_text(update: Update, context: ContextTypes.DEFAULT_TYPE):
         else:
             # چک عضویت در کانال
             try:
-                # اگر VIP_CHANNEL لینک هست، اول یوزرنیمش رو استخراج کن
-                if "t.me/" in VIP_CHANNEL:
-                    channel_username = VIP_CHANNEL.split("/")[-1]
+                # برای لینک private
+                if "t.me/+" in VIP_CHANNEL:
+                    # برای لینک invite خصوصی، باید چک متفاوت باشه
+                    # یا از کاربر بخوایید در کانال عضو بشه
+                    is_vip = False  # یا منطق چک خودتون
                 else:
-                    channel_username = VIP_CHANNEL.lstrip("@")
-                
-                member = await context.bot.get_chat_member(f"@{channel_username}", user_id)
-                if member.status in ["member", "administrator", "creator"]:
-                    is_vip = True
-                    logger.info(f"VIP user {user_id} requested analysis for {symbol}")
-                else:
-                    logger.info(f"Non-VIP user {user_id} requested analysis for {symbol}")
+                    # اگر یوزرنیم معمولیه
+                    channel_id = VIP_CHANNEL.replace("@", "").replace("https://t.me/", "")
+                    member = await context.bot.get_chat_member(f"@{channel_id}", user_id)
+                    if member.status in ["member", "administrator", "creator"]:
+                        is_vip = True
+                        logger.info(f"VIP user {user_id} requested analysis for {symbol}")
+                    else:
+                        logger.info(f"Non-VIP user {user_id} requested analysis for {symbol}")
             except Exception as e:
                 logger.error(f"Error checking VIP status: {e}")
                 is_vip = False
@@ -131,13 +143,16 @@ async def handle_text(update: Update, context: ContextTypes.DEFAULT_TYPE):
             
             if chart_buf:
                 # حذف پیام "در حال تحلیل..."
-                await processing_msg.delete()
+                try:
+                    await processing_msg.delete()
+                except:
+                    pass
                 
-                # ارسال عکس و تحلیل
+                # ارسال عکس و تحلیل - بدون parse_mode یا با HTML
                 await update.message.reply_photo(
                     photo=InputFile(chart_buf, filename=f"{symbol}_chart.png"),
                     caption=analysis_text,
-                    parse_mode="Markdown"
+                    parse_mode=None  # ایموجی‌ها بدون markdown بهترن
                 )
                 
                 # دکمه بازگشت
@@ -155,7 +170,7 @@ async def handle_text(update: Update, context: ContextTypes.DEFAULT_TYPE):
                 )
                 
         except Exception as e:
-            logger.error(f"Error in analysis: {e}")
+            logger.error(f"Error in analysis: {e}", exc_info=True)
             await update.message.reply_text(
                 "⚠️ خطایی در تحلیل رخ داد. لطفاً بعداً تلاش کن یا با پشتیبانی تماس بگیر."
             )
@@ -172,7 +187,7 @@ async def handle_text(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
 # ---------- خطاها ----------
 async def error_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    logger.error(f"Update {update} caused error {context.error}")
+    logger.error(f"Update {update} caused error {context.error}", exc_info=True)
     
     if update and update.effective_message:
         try:
@@ -187,7 +202,10 @@ def main():
     # شروع Flask در ترد جداگانه
     flask_thread = threading.Thread(target=run_flask, daemon=True)
     flask_thread.start()
-    logger.info("Flask server started on port 8080")
+    logger.info(f"Flask server started on port {os.environ.get('PORT', 8080)}")
+    
+    # کمی صبر کن Flask بالا بیاد
+    time.sleep(3)
     
     # ساخت اپلیکیشن تلگرام
     app = Application.builder().token(TOKEN).build()
@@ -203,15 +221,21 @@ def main():
     logger.info("🤖 Dragonfly Bot is starting...")
     
     # اجرای ربات
-    app.run_polling(
-        drop_pending_updates=True,
-        allowed_updates=Update.ALL_TYPES
-    )
+    try:
+        app.run_polling(
+            drop_pending_updates=True,
+            allowed_updates=Update.ALL_TYPES,
+            close_loop=False
+        )
+    except Exception as e:
+        logger.error(f"Bot failed to start: {e}")
+        raise
 
 if __name__ == "__main__":
     main()
 
  
+
 
 
 
